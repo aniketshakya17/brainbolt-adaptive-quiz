@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: brainbolt-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: brainbolt
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
+      - ./backend/seed.sql:/docker-entrypoint-initdb.d/2-seed.sql
+
+  redis:
+    image: redis:7
+    container_name: brainbolt-redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    container_name: brainbolt-backend
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/brainbolt
+      REDIS_URL: redis://redis:6379
+      PORT: 3000
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build: ./frontend
+    container_name: brainbolt-frontend
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:3000
+      NEXT_PUBLIC_USER_ID: 11111111-1111-1111-1111-111111111111
+      PORT: 3000
+      NODE_ENV: production
+    ports:
+      - "3001:3000"
+
+volumes:
+  pgdata:
